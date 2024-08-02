@@ -105,6 +105,12 @@ public class InternalAuthenticatorMakeCredentialSession : AuthenticatorMakeCrede
         self.stopped = true
     }
     
+    private func createDefaultKeyName() -> String {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyyMMdd"
+        return formatter.string(from: Date())
+    }
+    
     private func createNewCredentialId() -> [UInt8] {
         return UUIDHelper.toBytes(UUID())
     }
@@ -164,67 +170,57 @@ public class InternalAuthenticatorMakeCredentialSession : AuthenticatorMakeCrede
             return
         }
         
-        firstly {
-            
-            self.ui.requestUserConsent(
-                rpEntity:            rpEntity,
-                userEntity:          userEntity,
-                requireVerification: requireUserVerification,
-                context:             context
-            )
-            
-        }.done { keyName in
-                
-            let credentialId = self.createNewCredentialId()
-
-            let credSource = PublicKeyCredentialSource(
-                id:         credentialId,
-                rpId:       rpEntity.id!,
-                userHandle: userEntity.id,
-                signCount:  0,
-                alg:        keySupport.selectedAlg.rawValue,
-                otherUI:    keyName
-            )
-
-            self.credentialStore.deleteAllCredentialSources(
-                rpId:       credSource.rpId,
-                userHandle: credSource.userHandle
-            )
-
-            // TODO should remove fron KeyPair too?
-
-            guard let publicKeyCOSE = keySupport.createKeyPair(label: credSource.keyLabel) else {
-                self.stop(by: .unknown)
-                return
-            }
-
-            WAKLogger.debug("<MakeCredentialSession> setup key as resident-key")
-
-            if !self.credentialStore.saveCredentialSource(credSource) {
-                WAKLogger.debug("<MakeCredentialSession> failed to save credential source, stop session")
-                self.stop(by: .unknown)
-                return
-            }
-
-            // TODO Extension Processing
-            let extensions = SimpleOrderedDictionary<String>()
-
-            let attestedCredData = AttestedCredentialData(
-                aaguid:              UUIDHelper.zeroBytes,
-                credentialId:        credentialId,
-                credentialPublicKey: publicKeyCOSE
-            )
-                
-            let authenticatorData = AuthenticatorData(
-                rpIdHash:               rpEntity.id!.bytes.sha256(),
-                userPresent:            (requireUserPresence || requireUserVerification),
-                userVerified:           requireUserVerification,
-                signCount:              0,
-                attestedCredentialData: attestedCredData,
-                extensions:             extensions
-            )
-
-            guard let attestation =
+        let keyName = self.createDefaultKeyName()
+        let credentialId = self.createNewCredentialId()
+        
+        let credSource = PublicKeyCredentialSource(
+            id:         credentialId,
+            rpId:       rpEntity.id!,
+            userHandle: userEntity.id,
+            signCount:  0,
+            alg:        keySupport.selectedAlg.rawValue,
+            otherUI:    keyName
+        )
+        
+        self.credentialStore.deleteAllCredentialSources(
+            rpId:       credSource.rpId,
+            userHandle: credSource.userHandle
+        )
+        
+        // TODO should remove fron KeyPair too?
+        
+        guard let publicKeyCOSE = keySupport.createKeyPair(label: credSource.keyLabel) else {
+            self.stop(by: .unknown)
+            return
+        }
+        
+        WAKLogger.debug("<MakeCredentialSession> setup key as resident-key")
+        
+        if !self.credentialStore.saveCredentialSource(credSource) {
+            WAKLogger.debug("<MakeCredentialSession> failed to save credential source, stop session")
+            self.stop(by: .unknown)
+            return
+        }
+        
+        // TODO Extension Processing
+        let extensions = SimpleOrderedDictionary<String>()
+        
+        let attestedCredData = AttestedCredentialData(
+            aaguid:              UUIDHelper.zeroBytes,
+            credentialId:        credentialId,
+            credentialPublicKey: publicKeyCOSE
+        )
+        
+        let authenticatorData = AuthenticatorData(
+            rpIdHash:               rpEntity.id!.bytes.sha256(),
+            userPresent:            (requireUserPresence || requireUserVerification),
+            userVerified:           requireUserVerification,
+            signCount:              0,
+            attestedCredentialData: attestedCredData,
+            extensions:             extensions
+        )
+        
+        guard let attestation =
                 SelfAttestation.create(
                     authData:       authenticatorData,
                     clientDataHash: hash,
@@ -232,24 +228,16 @@ public class InternalAuthenticatorMakeCredentialSession : AuthenticatorMakeCrede
                     keyLabel:       credSource.keyLabel,
                     context:        self.context
                 ) else {
-                    WAKLogger.debug("<MakeCredentialSession> failed to build attestation object")
-                    self.stop(by: .unknown)
-                    return
-            }
-
-            self.completed()
-            self.delegate?.authenticatorSessionDidMakeCredential(
-                session:     self,
-                attestation: attestation
-            )
-
-        }.catch { error in
-            if let err = error as? WAKError {
-                self.stop(by: err)
-            } else {
-                self.stop(by: .unknown)
-            }
+            WAKLogger.debug("<MakeCredentialSession> failed to build attestation object")
+            self.stop(by: .unknown)
+            return
         }
+        
+        self.completed()
+        self.delegate?.authenticatorSessionDidMakeCredential(
+            session:     self,
+            attestation: attestation
+        )
     }
     
     // 6.3.1 Lookup Credential Source By Credential ID Algoreithm
