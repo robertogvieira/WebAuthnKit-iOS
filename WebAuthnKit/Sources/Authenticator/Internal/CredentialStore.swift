@@ -57,8 +57,8 @@ public class KeychainCredentialStore : CredentialStore {
     public func lookupCredentialSource(rpId: String, credentialId: [UInt8])
         -> Optional<PublicKeyCredentialSource> {
             WAKLogger.debug("<KeychainStore> lookupCredentialSource")
-
-            let handle = credentialId.toHexString()
+            
+            let handle = String(bytes: credentialId, encoding: .utf8) ?? credentialId.toHexString()
             let keychain = Keychain(service: rpId)
 
             if let result = try? keychain.getData(handle) {
@@ -93,8 +93,8 @@ public class KeychainCredentialStore : CredentialStore {
 
     public func saveCredentialSource(_ cred: PublicKeyCredentialSource) -> Bool {
         WAKLogger.debug("<KeychainStore> saveCredentialSource")
-
-        let handle = cred.id.toHexString()
+        
+        let handle = Base64.encodeBase64URL(cred.id)
         let keychain = Keychain(service: cred.rpId)
 
         if let bytes = cred.toCBOR() {

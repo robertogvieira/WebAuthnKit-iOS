@@ -49,7 +49,7 @@ public class ECDSAKeySupport : KeySupport {
     
     private func createPair(label: String) -> EllipticCurveKeyPair.Manager {
         let publicAccessControl = EllipticCurveKeyPair.AccessControl(
-            protection: kSecAttrAccessibleAlwaysThisDeviceOnly,
+            protection: kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly,
             flags:      []
         )
         let privateAccessControl = EllipticCurveKeyPair.AccessControl(
