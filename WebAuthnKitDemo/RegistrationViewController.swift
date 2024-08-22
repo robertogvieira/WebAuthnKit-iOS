@@ -23,9 +23,10 @@ class RegistrationViewController: UIViewController, UITextFieldDelegate {
     
     private func setupWebAuthnClient() {
         
-        self.userConsentUI = UserConsentUI(viewController: self)
+//        self.userConsentUI = UserConsentUI(viewController: self)
 
-        let authenticator = InternalAuthenticator(ui: self.userConsentUI)
+//        let authenticator = InternalAuthenticator(ui: self.userConsentUI)
+        let authenticator = InternalAuthenticator()
         
         self.webAuthnClient = WebAuthnClient(
             origin:        "https://example.org",

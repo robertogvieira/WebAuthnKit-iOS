@@ -66,24 +66,24 @@ public class InternalAuthenticator : Authenticator {
         }
     }
 
-    private let ui:              UserConsentUI
+//    private let ui:              UserConsentUI
     private let credentialStore: CredentialStore
 
     private let keySupportChooser = KeySupportChooser()
     
-    public convenience init(ui: UserConsentUI) {
+    public convenience init() {
         let store = KeychainCredentialStore()
         self.init(
-            ui:              ui,
+//            ui:              ui,
             credentialStore: store
         )
     }
 
     public init(
-        ui:              UserConsentUI,
+//        ui:              UserConsentUI,
         credentialStore: CredentialStore
     ) {
-        self.ui              = ui
+//        self.ui              = ui
         self.credentialStore = credentialStore
     }
 
@@ -91,7 +91,7 @@ public class InternalAuthenticator : Authenticator {
         WAKLogger.debug("<InternalAuthenticator> newMakeCredentialSession")
         return InternalAuthenticatorMakeCredentialSession(
             setting:           self.setting,
-            ui:                self.ui,
+//            ui:                self.ui,
             credentialStore:   self.credentialStore,
             keySupportChooser: self.keySupportChooser,
             context:           context
@@ -102,7 +102,7 @@ public class InternalAuthenticator : Authenticator {
         WAKLogger.debug("<InternalAuthenticator> newGetAssertionSession")
         return InternalAuthenticatorGetAssertionSession(
             setting:           self.setting,
-            ui:                self.ui,
+//            ui:                self.ui,
             credentialStore:   self.credentialStore,
             keySupportChooser: self.keySupportChooser,
             context:           context

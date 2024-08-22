@@ -36,6 +36,14 @@ public class WebAuthnClient: ClientOperationDelegate {
     private var getOperations = [String: ClientGetOperation]()
     private var createOperations = [String: ClientCreateOperation]()
 
+    public convenience init(origin: String) {
+        let authenticator = InternalAuthenticator()
+        self.init(
+            origin:        origin,
+            authenticator: authenticator
+        )
+    }
+    
     public init(
         origin:        String,
         authenticator: Authenticator

@@ -29,7 +29,7 @@ public class InternalAuthenticatorMakeCredentialSession : AuthenticatorMakeCrede
         }
     }
     
-    private let ui:                UserConsentUI
+//    private let ui:                UserConsentUI
     private let credentialStore:   CredentialStore
     private let keySupportChooser: KeySupportChooser
     private let context:           LAContext
@@ -39,13 +39,13 @@ public class InternalAuthenticatorMakeCredentialSession : AuthenticatorMakeCrede
     
     init(
         setting:           InternalAuthenticatorSetting,
-        ui:                UserConsentUI,
+//        ui:                UserConsentUI,
         credentialStore:   CredentialStore,
         keySupportChooser: KeySupportChooser,
         context:           LAContext? = nil
     ) {
         self.setting           = setting
-        self.ui                = ui
+//        self.ui                = ui
         self.credentialStore   = credentialStore
         self.keySupportChooser = keySupportChooser
         self.context           = context ?? LAContext()
@@ -79,12 +79,12 @@ public class InternalAuthenticatorMakeCredentialSession : AuthenticatorMakeCrede
             WAKLogger.debug("<MakeCredentialSession> already stopped")
             return
         }
-        if self.ui.opened {
-            WAKLogger.debug("<MakeCredentialSession> during user interaction")
-            self.ui.cancel(reason: reason)
-        } else {
-            self.stop(by: reason)
-        }
+//        if self.ui.opened {
+//            WAKLogger.debug("<MakeCredentialSession> during user interaction")
+//            self.ui.cancel(reason: reason)
+//        } else {
+//            self.stop(by: reason)
+//        }
     }
     
     private func stop(by reason: WAKError) {
@@ -103,12 +103,7 @@ public class InternalAuthenticatorMakeCredentialSession : AuthenticatorMakeCrede
     
     private func completed() {
         self.stopped = true
-    }
-    
-    private func createDefaultKeyName() -> String {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "yyyyMMdd"
-        return formatter.string(from: Date())
+        WAKLogger.debug("<MakeCredentialSession> stopped upon completion")
     }
     
     private func createNewCredentialId() -> [UInt8] {
@@ -138,31 +133,31 @@ public class InternalAuthenticatorMakeCredentialSession : AuthenticatorMakeCrede
                 return
         }
         
-        let hasSourceToBeExcluded = excludeCredentialDescriptorList.contains {
-            self.credentialStore.lookupCredentialSource(
-                rpId:         rpEntity.id!,
-                credentialId: $0.id
-            ) != nil
-        }
-        
-        if hasSourceToBeExcluded {
-            firstly {
-                self.ui.askUserToCreateNewCredential(rpId: rpEntity.id!)
-            }.done {
-                self.stop(by: .invalidState)
-                return
-            }.catch { error in
-                switch error {
-                case WAKError.notAllowed:
-                    self.stop(by: .notAllowed)
-                    return
-                default:
-                    self.stop(by: .unknown)
-                    return
-                }
-            }
-            return
-        }
+//        let hasSourceToBeExcluded = excludeCredentialDescriptorList.contains {
+//            self.credentialStore.lookupCredentialSource(
+//                rpId:         rpEntity.id!,
+//                credentialId: $0.id
+//            ) != nil
+//        }
+//        
+//        if hasSourceToBeExcluded {
+//            firstly {
+//                self.ui.askUserToCreateNewCredential(rpId: rpEntity.id!)
+//            }.done {
+//                self.stop(by: .invalidState)
+//                return
+//            }.catch { error in
+//                switch error {
+//                case WAKError.notAllowed:
+//                    self.stop(by: .notAllowed)
+//                    return
+//                default:
+//                    self.stop(by: .unknown)
+//                    return
+//                }
+//            }
+//            return
+//        }
         
         if requireUserVerification && !self.setting.allowUserVerification {
             WAKLogger.debug("<MakeCredentialSession> insufficient capability (user verification), stop session")
@@ -170,57 +165,73 @@ public class InternalAuthenticatorMakeCredentialSession : AuthenticatorMakeCrede
             return
         }
         
-        let keyName = self.createDefaultKeyName()
-        let credentialId = self.createNewCredentialId()
-        
-        let credSource = PublicKeyCredentialSource(
-            id:         credentialId,
-            rpId:       rpEntity.id!,
-            userHandle: userEntity.id,
-            signCount:  0,
-            alg:        keySupport.selectedAlg.rawValue,
-            otherUI:    keyName
-        )
-        
-        self.credentialStore.deleteAllCredentialSources(
-            rpId:       credSource.rpId,
-            userHandle: credSource.userHandle
-        )
-        
-        // TODO should remove fron KeyPair too?
-        
-        guard let publicKeyCOSE = keySupport.createKeyPair(label: credSource.keyLabel) else {
-            self.stop(by: .unknown)
-            return
-        }
-        
-        WAKLogger.debug("<MakeCredentialSession> setup key as resident-key")
-        
-        if !self.credentialStore.saveCredentialSource(credSource) {
-            WAKLogger.debug("<MakeCredentialSession> failed to save credential source, stop session")
-            self.stop(by: .unknown)
-            return
-        }
-        
-        // TODO Extension Processing
-        let extensions = SimpleOrderedDictionary<String>()
-        
-        let attestedCredData = AttestedCredentialData(
-            aaguid:              UUIDHelper.zeroBytes,
-            credentialId:        credentialId,
-            credentialPublicKey: publicKeyCOSE
-        )
-        
-        let authenticatorData = AuthenticatorData(
-            rpIdHash:               rpEntity.id!.bytes.sha256(),
-            userPresent:            (requireUserPresence || requireUserVerification),
-            userVerified:           requireUserVerification,
-            signCount:              0,
-            attestedCredentialData: attestedCredData,
-            extensions:             extensions
-        )
-        
-        guard let attestation =
+//        firstly {
+//            
+//            self.ui.requestUserConsent(
+//                rpEntity:            rpEntity,
+//                userEntity:          userEntity,
+//                requireVerification: requireUserVerification,
+//                context:             context
+//            )
+//            
+//        }.done { keyName in
+            
+            let formatter = DateFormatter()
+            formatter.dateFormat = "yyyyMMdd"
+            let keyName = formatter.string(from: Date())
+            
+            let credentialId = self.createNewCredentialId()
+            
+            WAKLogger.debug("<MakeCredentialSession> Created Credential ID: \(credentialId)")
+            
+            let credSource = PublicKeyCredentialSource(
+                id:         credentialId,
+                rpId:       rpEntity.id!,
+                userHandle: userEntity.id,
+                signCount:  0,
+                alg:        keySupport.selectedAlg.rawValue,
+                otherUI:    keyName
+            )
+
+            self.credentialStore.deleteAllCredentialSources(
+                rpId:       credSource.rpId,
+                userHandle: credSource.userHandle
+            )
+
+            // TODO should remove fron KeyPair too?
+
+            guard let publicKeyCOSE = keySupport.createKeyPair(label: credSource.keyLabel) else {
+                self.stop(by: .unknown)
+                return
+            }
+
+            WAKLogger.debug("<MakeCredentialSession> setup key as resident-key")
+
+            if !self.credentialStore.saveCredentialSource(credSource) {
+                WAKLogger.debug("<MakeCredentialSession> failed to save credential source, stop session")
+                self.stop(by: .unknown)
+                return
+            }
+
+            // TODO Extension Processing
+            let extensions = SimpleOrderedDictionary<String>()
+
+            let attestedCredData = AttestedCredentialData(
+                aaguid:              UUIDHelper.zeroBytes,
+                credentialId:        credentialId,
+                credentialPublicKey: publicKeyCOSE
+            )
+                
+            let authenticatorData = AuthenticatorData(
+                rpIdHash:               rpEntity.id!.bytes.sha256(),
+                userPresent:            (requireUserPresence || requireUserVerification),
+                userVerified:           requireUserVerification,
+                signCount:              0,
+                attestedCredentialData: attestedCredData,
+                extensions:             extensions
+            )
+
+            guard let attestation =
                 SelfAttestation.create(
                     authData:       authenticatorData,
                     clientDataHash: hash,
@@ -228,16 +239,25 @@ public class InternalAuthenticatorMakeCredentialSession : AuthenticatorMakeCrede
                     keyLabel:       credSource.keyLabel,
                     context:        self.context
                 ) else {
-            WAKLogger.debug("<MakeCredentialSession> failed to build attestation object")
-            self.stop(by: .unknown)
-            return
-        }
-        
-        self.completed()
-        self.delegate?.authenticatorSessionDidMakeCredential(
-            session:     self,
-            attestation: attestation
-        )
+                    WAKLogger.debug("<MakeCredentialSession> failed to build attestation object")
+                    self.stop(by: .unknown)
+                    return
+            }
+
+            self.completed()
+            self.delegate?.authenticatorSessionDidMakeCredential(
+                session:     self,
+                attestation: attestation
+            )
+            WAKLogger.debug("<MakeCredentialSession> did reach end of execution block. Delegate is nil \(self.delegate == nil)")
+//        }.catch { error in
+//            WAKLogger.debug("<MakeCredentialSession> failed with error \(error)")
+//            if let err = error as? WAKError {
+//                self.stop(by: err)
+//            } else {
+//                self.stop(by: .unknown)
+//            }
+//        }
     }
     
     // 6.3.1 Lookup Credential Source By Credential ID Algoreithm

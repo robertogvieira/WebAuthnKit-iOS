@@ -29,7 +29,7 @@ public class InternalAuthenticatorGetAssertionSession : AuthenticatorGetAssertio
         }
     }
     
-    private let ui:                UserConsentUI
+//    private let ui:                UserConsentUI
     private let credentialStore:   CredentialStore
     private let keySupportChooser: KeySupportChooser
     private let context:           LAContext
@@ -39,13 +39,13 @@ public class InternalAuthenticatorGetAssertionSession : AuthenticatorGetAssertio
     
     init(
         setting:             InternalAuthenticatorSetting,
-        ui:                  UserConsentUI,
+//        ui:                  UserConsentUI,
         credentialStore:     CredentialStore,
         keySupportChooser:   KeySupportChooser,
         context:             LAContext? = nil
     ) {
         self.setting             = setting
-        self.ui                  = ui
+//        self.ui                  = ui
         self.credentialStore     = credentialStore
         self.keySupportChooser   = keySupportChooser
         self.context             = context ?? LAContext()
@@ -76,13 +76,13 @@ public class InternalAuthenticatorGetAssertionSession : AuthenticatorGetAssertio
             WAKLogger.debug("<GetAssertionSession> already stopped")
             return
         }
-        if self.ui.opened {
-            WAKLogger.debug("<GetAssertionSession> during user interaction")
-            self.ui.cancel(reason: reason)
-        } else {
-            WAKLogger.debug("<GetAssertionSession> stop by clientCancelled")
-            self.stop(by: reason)
-        }
+//        if self.ui.opened {
+//            WAKLogger.debug("<GetAssertionSession> during user interaction")
+//            self.ui.cancel(reason: reason)
+//        } else {
+//            WAKLogger.debug("<GetAssertionSession> stop by clientCancelled")
+//            self.stop(by: reason)
+//        }
     }
     
     private func stop(by reason: WAKError) {
@@ -123,90 +123,88 @@ public class InternalAuthenticatorGetAssertionSession : AuthenticatorGetAssertio
                 allowCredentialDescriptorList: allowCredentialDescriptorList
         )
         
-        if credSources.isEmpty {
+        guard let cred = credSources.first else {
             WAKLogger.debug("<GetAssertion> not found allowable credential source, stop session")
             self.stop(by: .notAllowed)
             return
         }
         
-        firstly {
-            
-            self.ui.requestUserSelection(
-                sources:             credSources,
-                requireVerification: requireUserVerification,
-                context:             context
-            )
-            
-        }.done { cred in
-                
-            var newSignCount: UInt32 = 0
-
-            var copiedCred = cred
-            copiedCred.signCount = cred.signCount + self.setting.counterStep
-            newSignCount = copiedCred.signCount
-            if !self.credentialStore.saveCredentialSource(copiedCred) {
-                self.stop(by: .unknown)
-                return
-            }
-
-            let extensions = SimpleOrderedDictionary<String>()
-
-            let authenticatorData = AuthenticatorData(
-                rpIdHash:               rpId.bytes.sha256(),
-                userPresent:            (requireUserPresence || requireUserVerification),
-                userVerified:           requireUserVerification,
-                signCount:              newSignCount,
-                attestedCredentialData: nil,
-                extensions:             extensions
-            )
-
-            let authenticatorDataBytes = authenticatorData.toBytes()
-
-            var data = authenticatorDataBytes
-            data.append(contentsOf: hash)
-
-            guard let alg = COSEAlgorithmIdentifier.fromInt(cred.alg) else {
-                WAKLogger.debug("<GetAssertion> insufficient capability (alg), stop session")
-                self.stop(by: .unsupported)
-                return
-            }
-
-            guard let keySupport =
-                self.keySupportChooser.choose([alg]) else {
-                    WAKLogger.debug("<GetAssertion> insufficient capability (alg), stop session")
-                    self.stop(by: .unsupported)
-                    return
-            }
-            
-            guard let signature = keySupport.sign(data: data, label: cred.keyLabel, context: self.context) else {
-                self.stop(by: .unknown)
-                return
-            }
-
-            var assertion = AuthenticatorAssertionResult(
-                authenticatorData: authenticatorDataBytes,
-                signature:         signature
-            )
-
-            assertion.userHandle = cred.userHandle
-
-            if allowCredentialDescriptorList.count != 1 {
-                assertion.credentailId = cred.id
-            }
-
-            self.completed()
-            self.delegate?.authenticatorSessionDidDiscoverCredential(
-                session:   self,
-                assertion: assertion
-            )
-                
-        }.catch { error in
-            if let err = error as? WAKError {
-                self.stop(by: err)
-            } else {
-                self.stop(by: .unknown)
-            }
+//        firstly {
+//            
+//            self.ui.requestUserSelection(
+//                sources:             credSources,
+//                requireVerification: requireUserVerification,
+//                context:             context
+//            )
+//            
+//        }.done { cred in
+        var newSignCount: UInt32 = 0
+        
+        var copiedCred = cred
+        copiedCred.signCount = cred.signCount + self.setting.counterStep
+        newSignCount = copiedCred.signCount
+        if !self.credentialStore.saveCredentialSource(copiedCred) {
+            self.stop(by: .unknown)
+            return
         }
+        
+        let extensions = SimpleOrderedDictionary<String>()
+        
+        let authenticatorData = AuthenticatorData(
+            rpIdHash:               rpId.bytes.sha256(),
+            userPresent:            (requireUserPresence || requireUserVerification),
+            userVerified:           requireUserVerification,
+            signCount:              newSignCount,
+            attestedCredentialData: nil,
+            extensions:             extensions
+        )
+        
+        let authenticatorDataBytes = authenticatorData.toBytes()
+        
+        var data = authenticatorDataBytes
+        data.append(contentsOf: hash)
+        
+        guard let alg = COSEAlgorithmIdentifier.fromInt(cred.alg) else {
+            WAKLogger.debug("<GetAssertion> insufficient capability (alg), stop session")
+            self.stop(by: .unsupported)
+            return
+        }
+        
+        guard let keySupport =
+                self.keySupportChooser.choose([alg]) else {
+            WAKLogger.debug("<GetAssertion> insufficient capability (alg), stop session")
+            self.stop(by: .unsupported)
+            return
+        }
+        
+        guard let signature = keySupport.sign(data: data, label: cred.keyLabel, context: self.context) else {
+            self.stop(by: .unknown)
+            return
+        }
+        
+        var assertion = AuthenticatorAssertionResult(
+            authenticatorData: authenticatorDataBytes,
+            signature:         signature
+        )
+        
+        assertion.userHandle = cred.userHandle
+        
+        if allowCredentialDescriptorList.count != 1 {
+            assertion.credentailId = cred.id
+        }
+        
+        self.completed()
+        self.delegate?.authenticatorSessionDidDiscoverCredential(
+            session:   self,
+            assertion: assertion
+        )
+//        }.catch { error in
+//            if let err = error as? WAKError {
+//                self.stop(by: err)
+//            } else {
+//                self.stop(by: .unknown)
+//            }
+//        }
         
     }
     
