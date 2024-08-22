@@ -248,3 +248,27 @@ public class WebAuthnClient: ClientOperationDelegate {
 
 }
 
+// Returns the result of 'create' and 'get' methods in a completion block, instead of wrapped in a Promise.
+public extension WebAuthnClient {
+    
+    func create(_ options: PublicKeyCredentialCreationOptions, context: LAContext?, completion: @escaping (CreateResponse?, Error?) -> Void) {
+        firstly {
+            create(options, context: context)
+        }.done { credential in
+            completion(credential, nil)
+        }.catch { error in
+            completion(nil, error)
+        }
+    }
+    
+    func get(_ options: PublicKeyCredentialRequestOptions, context: LAContext?, completion: @escaping (GetResponse?, Error?) -> Void) {
+        firstly {
+            get(options, context: context)
+        }.done { assertion in
+            completion(assertion, nil)
+        }.catch { error in
+            completion(nil, error)
+        }
+    }
+    
+}
